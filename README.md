@@ -87,16 +87,8 @@ If calibration values aren’t available, the depth map is often “relative” 
 ### Disparity maps
 **[PLACEHOLDER: add disparity map images here]**
 
-- `outputs/disparity_bm.png` (example)
-- `outputs/disparity_sgbm.png` (example)
-
 ### Depth maps
 **[PLACEHOLDER: add depth map images here]**
-
-- `outputs/depth_bm.png` (example)
-- `outputs/depth_sgbm.png` (example)
-
-> When you upload images, I can also add a nice side-by-side table (Left | Right | Disparity | Depth).
 
 ---
 
@@ -119,8 +111,3 @@ Current:
 
 Planned:
 - C++ (OpenCV)
-
----
-
-## Author
-Made by **Va5k3**.
