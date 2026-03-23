@@ -80,11 +80,7 @@ If calibration values aren’t available, the depth map is often “relative” 
 
 ## Results (images placeholder)
 ### Disparity maps
-**[PLACEHOLDER: add disparity map images here]**
-
-### Depth maps
-**[PLACEHOLDER: add depth map images here]**
-
+need to add
 ---
 
 ### Planned: C++ version (performance)
