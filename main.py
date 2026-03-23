@@ -1,10 +1,11 @@
-import cv2 # opencv za stereovision
-import numpy as np # koristim za numericke operacije i manipulaciju nizovima
-import os # za rad sa fajlovima i direktorijumima
-import glob # za pronalazak fajlova u direktorijumu
-from pathlib import Path # za rad sa putanjama fajlova na jednostavan nacin
+import cv2
+import numpy as np 
+import os 
+import glob 
+import re
+from pathlib import Path 
 
-class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pipeline
+class StereoVisionPipeline:
     def __init__(self, config):
         """
         Initialize pipeline with configuration parameters
@@ -17,12 +18,12 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
                 - block_size: Matching block size (odd number) # Velicina bloka za uporedjivanje piksela
                 - use_gray: Convert to grayscale (True/False) # Da li da se koristi siva skala za obradu slika
         """
-        self.config = config # Cuvam konfiguraciju u instanci klase
-        self.calib = None # Kalibracioni parametri ce biti ucitani iz calib.txt fajla
-        self.left_img = None # Mesto za cuvanje leve slike
-        self.right_img = None # Mesto za cuvanje desne slike
-        self.disparity_map = None # Mesto za cuvanje izracunate disparitetne mape
-        self.depth_map = None # Mesto za cuvanje izracunate dubinske mape
+        self.config = config 
+        self.calib = None
+        self.left_img = None 
+        self.right_img = None 
+        self.disparity_map = None 
+        self.depth_map = None 
          
         # Validate dataset path
         self.dataset_path = Path(config['dataset_path'])
@@ -30,10 +31,10 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
             raise FileNotFoundError(f"Dataset path not found: {self.dataset_path}")
         
         # Load calibration
-        self._load_calibration() # Ucitavam kalibracione parametre iz calib.txt fajla koji se nalazi u datasetu, ovi parametri su neophodni za pravilno izracunavanje dubine iz dispariteta
+        self._load_calibration()
         
         # Initialize stereo matcher
-        self._init_stereo_matcher() # Inicijalizujem OpenCV stereo matcher (StereoBM ili StereoSGBM) na osnovu konfiguracije, ovaj objekat ce se koristiti za izracunavanje disparitetne mape iz leve i desne slike
+        self._init_stereo_matcher() 
     
 
     def _load_calibration(self):
@@ -42,7 +43,7 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
             raise FileNotFoundError(f"calib.txt not found in {self.dataset_path}")
         
         self.calib = {}
-        with open(calib_file, 'r') as f: # with je isto sto i using u C#, automatski zatvara fajl nakon koriscenja
+        with open(calib_file, 'r') as f: 
             for line in f:
                 line = line.strip() # Uklanjam prazne prostore sa pocetka i kraja linije
                 if not line or line.startswith('#'):
@@ -54,17 +55,15 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
                     key = key.strip() 
                     
                     # Handle camera matrices (e.g., cam0=[...])
-                    if key in ['cam0', 'cam1']: # Ovi kljucevi sadrze kalibracione matrice kamere koje su predstavljene kao niz brojeva unutar uglastih zagrada, npr: cam0=[fx 0 cx; 0 fy cy; 0 0 1]
-                        # Extract numbers between brackets
-                        import re # regularni izrazi za pronalazenje brojeva u stringu
-                        numbers = re.findall(r'[\d.]+', value) # pronalazim sve brojeve (cifre i tacke) u stringu
+                    if key in ['cam0', 'cam1']: 
+                        numbers = re.findall(r'[\d.]+', value) 
                         if len(numbers) >= 9:
                             # Reshape to 3x3 matrix
-                            self.calib[key] = np.array(numbers[:9], dtype=float).reshape(3, 3) # Uzimam prvih 9 brojeva i reshapuju ih u 3x3 matricu, ovo su kalibracioni parametri kamere (fokalna duzina, centar projekcije, itd.)
+                            self.calib[key] = np.array(numbers[:9], dtype=float).reshape(3, 3)
                     else:
                         # Simple numeric values
                         try:
-                            self.calib[key] = float(value) # Ako nije kamera matrica, pokusavam da konvertujem vrednost u float, ovo su dodatni parametri poput baseline (rastojanje izmedju kamera) i doffs (disparity offset)
+                            self.calib[key] = float(value) 
                         except ValueError:
                             self.calib[key] = value
         
@@ -79,7 +78,7 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
         
         print(f"Loaded calibration: f={self.focal_length:.1f}px, baseline={self.baseline:.3f}m")
     
-    def _init_stereo_matcher(self): # Initialize the stereo matching algorithm. Ovaj algoritam sluzi za pronalazenje odgovarajucih tacaka izmedju leve i desne slike kako bi se izracunala disparitetna mapa, koja predstavlja razliku u poziciji odgovarajucih tacaka na levoj i desnoj slici. Disparitetna mapa se zatim koristi za izracunavanje dubine scene.
+    def _init_stereo_matcher(self): # Initialize the stereo matching algorithm. 
         """Initialize OpenCV stereo matching algorithm"""
         method = self.config.get('stereo_method', 'SGBM').upper()
         num_disparities = self.config.get('num_disparities', 64)
@@ -88,7 +87,7 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
         # Ensure num_disparities is multiple of 16
         num_disparities = ((num_disparities + 15) // 16) * 16 # OpenCV zahteva da broj dispariteta bude deljiv sa 16, ovo osigurava da se algoritam pravilno izvrsava
         
-        if method == 'BM': # Ako je odabran StereoBM algoritam, koji je brzi ali manje precizan u poređenju sa SGBM, inicijalizujem ga sa zadatim parametrima. Ovaj algoritam koristi blokove piksela za pronalazak odgovarajućih tačaka između leve i desne slike.
+        if method == 'BM': 
             # StereoBM - faster, less accurate
             self.stereo = cv2.StereoBM.create(
                 numDisparities=num_disparities,
@@ -103,7 +102,7 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
             self.stereo.setSpeckleRange(32)
             self.stereo.setSpeckleWindowSize(100)
             
-        else:  # Default to SGBM - more accurate, slower. SGBM (Semi-Global Block Matching) koristi globalnu optimizaciju za pronalazak odgovarajućih tačaka, što rezultira preciznijom disparitetnom mapom, ali je računski zahtevniji.
+        else:  # Default to SGBM - more accurate, slower. 
             self.stereo = cv2.StereoSGBM.create(
                 minDisparity=0,
                 numDisparities=num_disparities,
@@ -149,29 +148,29 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
         
         print(f"Loaded images: {left_path.name}, {right_path.name} ({self.left_img.shape[1]}x{self.left_img.shape[0]})")
     
-    def compute_disparity(self): # Razlika izmedju init_stereo_matcher i compute_disparity je u tome sto init_stereo_matcher samo postavlja parametre algoritma, dok compute_disparity koristi te parametre da izracuna stvarnu disparitetnu mapu iz ucitanih slika. Ova metoda koristi OpenCV funkciju stereo.compute() koja uzima leve i desne slike (obično u sivoj skali) i vraca disparitetnu mapu, koja predstavlja razliku u poziciji odgovarajucih tacaka na levoj i desnoj slici. Disparitetna mapa se zatim koristi za izracunavanje dubine scene.
+    def compute_disparity(self): 
         if self.left_gray is None or self.right_gray is None:
             raise ValueError("Images not loaded. Call load_images() first.")
         
         # Compute disparity
-        disparity = self.stereo.compute(self.left_gray, self.right_gray).astype(np.float32) # OpenCV stereo compute returns a disparity map where valid disparities are scaled by 16 (for subpixel accuracy), so je potrebno podeliti sa 16 da bi se dobile stvarne vrednosti dispariteta. Disparitetna mapa ce sadrzati negativne vrednosti za piksele gde nije moguce pronaci odgovarajuce tacke, pa cemo te vrednosti filtrirati kasnije.
+        disparity = self.stereo.compute(self.left_gray, self.right_gray).astype(np.float32) # OpenCV stereo compute returns a disparity map where valid disparities are scaled by 16 (for subpixel accuracy), 
         
         # For StereoBM/SGBM, disparity is scaled by 16
         if self.config.get('stereo_method', 'SGBM').upper() in ['BM', 'SGBM']:
             disparity = disparity / 16.0
         
         # Filter out invalid disparities (negative values)
-        self.disparity_map = np.maximum(disparity, 0) # Postavljam negativne vrednosti na 0, jer one predstavljaju piksele gde nije moguce pronaci odgovarajuce tacke, i ne bi trebalo da se koriste u daljim izracunavanjima dubine.
+        self.disparity_map = np.maximum(disparity, 0) 
         
         # Optional: Apply median filter to reduce noise
         if self.config.get('apply_median_filter', True):
-            self.disparity_map = cv2.medianBlur(self.disparity_map.astype(np.float32), 5) # Primena median filtera na disparitetnu mapu kako bi se smanjila buka i poboljsala kvaliteta rezultata. Median filter zamenjuje svaki piksel sa medianom vrednosti u njegovom okruzenju, sto je efikasno za uklanjanje soli i bibera buke.
+            self.disparity_map = cv2.medianBlur(self.disparity_map.astype(np.float32), 5) 
         
-        print(f"Disparity computed: range [{self.disparity_map.min():.1f}, {self.disparity_map.max():.1f}]") # Ispisujem raspon vrednosti disparitetne mape, sto moze biti korisno za dijagnostiku i podešavanje parametara algoritma. Na primer, ako je maksimalni disparitet prenizak, to moze znaciti da algoritam ne pronalazi odgovarajuce tacke na vecim udaljenostima, dok previsok maksimalni disparitet moze dovesti do vise buke u rezultatu.
+        print(f"Disparity computed: range [{self.disparity_map.min():.1f}, {self.disparity_map.max():.1f}]") 
         
         return self.disparity_map
     
-    def compute_depth(self): # Ova metoda koristi izracunatu disparitetnu mapu i kalibracione parametre kamere (fokalna duzina, baseline, i disparity offset) da izracuna dubinsku mapu scene. Dubinska mapa predstavlja udaljenost svakog piksela od kamere, i moze se koristiti za razne aplikacije poput 3D rekonstrukcije, robotike, ili autonomnih vozila. Formula koja se koristi za konverziju dispariteta u dubinu je Z = (f * B) / (d + doffs), gde je f focalna duzina kamere u pikselima, B baseline (rastojanje izmedju kamera) u metrima, d disparitetna vrednost za dati piksel, i doffs disparity offset koji se koristi za korekciju sistemskih gresaka u merenju dispariteta. Razlika izmedju init_stereo_matcher i compute_depth je u tome sto init_stereo_matcher samo postavlja parametre algoritma, dok compute_depth koristi te parametre i izracunatu disparitetnu mapu da dobije stvarnu dubinsku mapu scene. Ova metoda takodje filtrira nevalidne vrednosti i klipuje dubinu na maksimalnu vrednost definisanu u konfiguraciji kako bi se izbegle ekstremne vrednosti koje mogu nastati zbog gresaka u merenju dispariteta.
+    def compute_depth(self):
 
         if self.disparity_map is None:
             raise ValueError("Disparity map not computed. Call compute_disparity() first.")
@@ -183,20 +182,20 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
         self.depth_map = np.zeros_like(self.disparity_map)
         
         # Compute depth only for valid disparities
-        with np.errstate(divide='ignore', invalid='ignore'): # Ova linija koristi numpy errstate da ignoriše upozorenja o deljenju sa nulom i nevalidnim operacijama, jer cemo imati piksele sa disparitetom 0 koji nisu validni za izracunavanje dubine. Ovim se izbegavaju nepotrebna upozorenja tokom izracunavanja dubinske mape.
+        with np.errstate(divide='ignore', invalid='ignore'): 
             self.depth_map[valid_disparity] = (
                 self.focal_length * self.baseline
             ) / (self.disparity_map[valid_disparity] + self.doffs)
         
         # Clip to reasonable range (e.g., 0.1m to 100m)
         max_depth = self.config.get('max_depth_meters', 50.0)
-        self.depth_map = np.clip(self.depth_map, 0, max_depth) # Ova linija koristi numpy clip funkciju da ograniči vrednosti u dubinskoj mapi na opseg od 0 do max_depth, koji je definisan u konfiguraciji. Ovo je korisno za uklanjanje ekstremnih vrednosti koje mogu nastati zbog gresaka u merenju dispariteta, kao i za fokusiranje na relevantne udaljenosti u sceni. Na primer, ako znamo da nas interesuju objekti unutar 20 metara, mozemo postaviti max_depth na 20 kako bismo izbegli visoke vrednosti dubine koje nisu relevantne za nasu aplikaciju.
+        self.depth_map = np.clip(self.depth_map, 0, max_depth) 
         
         print(f"Depth computed: range [{self.depth_map[self.depth_map>0].min():.2f}m, {self.depth_map.max():.2f}m]")
         
         return self.depth_map
    
-    def visualize_results(self, save_fig=False, output_dir='output'): # Ova metoda kreira vizualizaciju rezultata stereovision pipeline-a, uključujući originalnu levu sliku, disparitetnu mapu, dubinsku mapu, i panel sa informacijama o parametrima. Vizualizacija je organizovana u 2x2 mrežu, gde se gornji red sastoji od leve slike i kolorirane disparitetne mape, a donji red od kolorirane dubinske mape i panela sa informacijama. Disparitetna mapa i dubinska mapa su normalizovane i prikazane u lažnim bojama (colormap) radi boljeg vizuelnog razumevanja. Ova metoda takođe omogućava opciju čuvanja vizualizacije kao slike u zadatom direktorijumu.
+    def visualize_results(self, save_fig=False, output_dir='output'): 
         if self.left_img is None or self.disparity_map is None:
             raise ValueError("No results to visualize")
 
@@ -207,7 +206,7 @@ class StereoVisionPipeline: # Glavna klasa koja implementira ceo stereovision pi
         # Prepare disparity and depth for visualization
         disp_vis = self.disparity_map.copy()
         if disp_vis.max() > 0:
-            disp_vis = (disp_vis / disp_vis.max() * 255).astype(np.uint8) # Normalizujem disparitetnu mapu na opseg od 0 do 255 i konvertujem je u uint8 format, kako bi se mogla prikazati kao slika. Ovo je korisno za vizualizaciju, jer originalna disparitetna mapa sadrzi stvarne vrednosti dispariteta koje mogu biti u širokom opsegu, dok normalizovana verzija omogućava da se vizuelno razlikuju različite vrednosti dispariteta kroz lažne boje.
+            disp_vis = (disp_vis / disp_vis.max() * 255).astype(np.uint8) 
         disp_color = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
 
         depth_vis = self.depth_map.copy()
@@ -350,7 +349,7 @@ def main():
     return 0
 
 
-def batch_process_scenes(scenes_folder, config): # Ova funkcija omogućava batch obradu više scena iz datog direktorijuma. Funkcija pretražuje sve poddirektorijume u zadatom folderu, tražeći one koji sadrže "calib.txt" fajl, što je indikator da se radi o validnoj sceni. Za svaku pronađenu scenu, funkcija kreira instancu StereoVisionPipeline sa ažuriranom konfiguracijom koja uključuje putanju do scene, i zatim izvršava ceo pipeline (učitavanje slika, izračunavanje dispariteta i dubine). Rezultati se čuvaju u rečniku koji sadrži statistiku o disparitetu i dubini za svaku scenu, kao i eventualne greške koje su se pojavile tokom obrade. Na kraju, funkcija vraća ovaj rečnik sa rezultatima za sve obrađene scene.
+def batch_process_scenes(scenes_folder, config): 
     
     scenes = glob.glob(os.path.join(scenes_folder, "*"))
     scenes = [s for s in scenes if os.path.isdir(s) and 
@@ -396,27 +395,4 @@ if __name__ == "__main__":
     # Run main example
     exit_code = main()
     
-    # Example for batch processing:
-    """
-    config = {
-        'stereo_method': 'SGBM',
-        'num_disparities': 64,
-        'block_size': 11,
-        'use_gray': True,
-        'max_depth_meters': 20.0,
-        'save_results': True,
-        'output_dir': './stereo_output'
-    }
-    
-    results = batch_process_scenes('./datasets/middlebury', config)
-    
-    # Print summary
-    print("\n" + "="*50)
-    print("Batch Processing Summary")
-    print("="*50)
-    for scene, stats in results.items():
-        if 'error' in stats:
-            print(f"{scene}: ERROR - {stats['error']}")
-        else:
-            print(f"{scene}: Depth range {stats['depth_range'][0]:.2f}-{stats['depth_range'][1]:.2f}m")
-    """
+   
