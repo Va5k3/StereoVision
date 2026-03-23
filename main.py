@@ -7,17 +7,7 @@ from pathlib import Path
 
 class StereoVisionPipeline:
     def __init__(self, config):
-        """
-        Initialize pipeline with configuration parameters
-        
-        Args:
-            config: Dictionary containing:
-                - dataset_path: Path to Middlebury scene folder
-                - stereo_method: 'BM' or 'SGBM' # Odabir algoritma za stereo matching, stereo mathching je proces pronalazenja odgovarajucih tacki izmedju leve i desne slike kako bi se izracunala disparitetna mapa
-                - num_disparities: Number of disparity levels (multiple of 16) # Broj nivoa dispariteta koji algoritam koristi, veci broj omogucava detekciju vecih udaljenosti ali je sporije
-                - block_size: Matching block size (odd number) # Velicina bloka za uporedjivanje piksela
-                - use_gray: Convert to grayscale (True/False) # Da li da se koristi siva skala za obradu slika
-        """
+       
         self.config = config 
         self.calib = None
         self.left_img = None 
