@@ -55,11 +55,6 @@ Right now you said the command is:
 python main
 ```
 
-Most Python projects use:
-```bash
-python main.py
-```
-
 
 ## Methods (quick explanation)
 ### StereoBM (Block Matching)
