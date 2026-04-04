@@ -85,22 +85,14 @@ If calibration values aren’t available, the depth map is often “relative” 
 
 ---
 
-### Planned: C++ version (performance)
-I also plan to create a **C++ version** of this project for better performance and more optimization control.  
-The goal is to keep the same idea (StereoBM/SGBM and the same dataset input), but run faster and make it easier to experiment with optimized settings.
+## C++ implementation
 
-Potential improvements in C++:
-- Faster runtime for high-resolution images
-- More control over memory usage
-- Easier profiling/optimization
+A native OpenCV build lives under **`cpp/`** (CMake + optional vcpkg manifest). It mirrors the Python pipeline: same calibration and stereo matchers, disparity → depth, visualization and optional export.
+
+See **[cpp/README.md](cpp/README.md)** for configure, build, and run instructions.
 
 ---
 
 ## Tech stack
-Current:
-- Python
-- OpenCV
-- NumPy
-
-Planned:
-- C++ (OpenCV)
+- Python, OpenCV, NumPy
+- C++20, OpenCV 4 (see `cpp/`)
